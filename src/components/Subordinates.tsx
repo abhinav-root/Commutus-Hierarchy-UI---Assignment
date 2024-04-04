@@ -6,9 +6,10 @@ import { memo } from "react";
 interface SubordinatesType {
   subordinates?: IEmployee[];
   color: string;
+  searchValue: string
 }
 
-function Subordinates({ subordinates, color }: SubordinatesType) {
+function Subordinates({ subordinates, color, searchValue }: SubordinatesType) {
   return (
     <Box
       display={"flex"}
@@ -16,7 +17,7 @@ function Subordinates({ subordinates, color }: SubordinatesType) {
       alignItems={"space-between"}
     >
       {subordinates?.map((emp) => {
-        return <Employee key={emp.id} employee={emp} color={color} />;
+        return <Employee key={emp.id} employee={emp} color={color} searchValue={searchValue}/>;
       })}
     </Box>
   );

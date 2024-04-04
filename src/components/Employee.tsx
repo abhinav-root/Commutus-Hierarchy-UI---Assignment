@@ -15,7 +15,10 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { Employee as IEmployee, updateEmployee } from "../redux/employees/employeesSlice";
+import {
+  Employee as IEmployee,
+  updateEmployee,
+} from "../redux/employees/employeesSlice";
 import { getRandomColor } from "../utils/common";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { useCallback, useEffect, useState } from "react";
@@ -27,22 +30,13 @@ import { z } from "zod";
 import { SubmitHandler, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useDispatch } from "react-redux";
+import Notification from "./Notification";
+import EmployeeDetailsModal from "./EmployeeDetailsModal";
 
 type EmployeeProps = {
   employee: IEmployee;
   color: string;
-};
-
-const style = {
-  position: "absolute" as "absolute",
-  top: "50%",
-  left: "50%",
-  transform: "translate(-50%, -50%)",
-  width: 600,
-  bgcolor: "background.paper",
-  boxShadow: 24,
-  p: 4,
-  borderRadius: 2,
+  searchValue: string;
 };
 
 const phoneRegex = new RegExp(
@@ -57,14 +51,16 @@ const schema = z.object({
   profileImageUrl: z.string().url(),
 });
 
-type FormFields = z.infer<typeof schema>;
+export type FormFields = z.infer<typeof schema>;
 
-export const Employee = ({ employee, color }: EmployeeProps) => {
+export const Employee = ({ employee, color, searchValue }: EmployeeProps) => {
   const [subordinatesColor] = useState<string>(getRandomColor());
   const [selectedEmployee, setSelectedEmployee] = useState<null | IEmployee>(
     null
   );
-  const dispatch = useDispatch()
+  const [notificationMessage, setNotificationMessage] = useState("");
+  const [showNotification, setShowNotification] = useState(false);
+  const dispatch = useDispatch();
   const {
     register,
     handleSubmit,
@@ -82,12 +78,13 @@ export const Employee = ({ employee, color }: EmployeeProps) => {
   });
   useEffect(() => {
     if (selectedEmployee) {
-      reset(selectedEmployee)
+      reset(selectedEmployee);
     }
   }, [selectedEmployee]);
   const onSubmit: SubmitHandler<FormFields> = (data) => {
-    // console.log(data)
-    dispatch(updateEmployee(data))
+    dispatch(updateEmployee(data));
+    setNotificationMessage("Details Updated");
+    setShowNotification(true);
   };
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -104,6 +101,15 @@ export const Employee = ({ employee, color }: EmployeeProps) => {
   const handleModalOpen = () => setIsModalOpen(true);
   const handleModalClose = () => setIsModalOpen(false);
 
+  const [matchesSearchValue, setMatchesSearchValue] = useState(false)
+
+
+  useEffect(() => {
+    if (searchValue) {
+      setMatchesSearchValue(employee.name.toLowerCase().startsWith(searchValue.toLowerCase()))
+    }
+  }, [searchValue])
+
   return (
     <Box
       display={"flex"}
@@ -113,114 +119,21 @@ export const Employee = ({ employee, color }: EmployeeProps) => {
       mx={1}
       mt={4}
     >
-      <Modal
-        open={isModalOpen}
-        onClose={() => {
-          handleModalClose();
-          setSelectedEmployee(null);
-        }}
-        aria-labelledby="modal-modal-title"
-        aria-describedby="modal-modal-description"
-      >
-        <Box sx={style} component={"form"} onSubmit={handleSubmit(onSubmit)} noValidate>
-          <Box
-            display={"flex"}
-            justifyContent={"space-between"}
-            alignItems={"baseline"}
-            mt={1}
-            mb={4}
-          >
-            <Typography
-              fontSize={22}
-              fontWeight={700}
-              color={(theme) => theme.palette.grey[800]}
-            >
-              Employee Details
-            </Typography>
-            <Button variant="outlined" size="large" startIcon={<Edit />}>
-              Edit
-            </Button>
-          </Box>
-
-          <Box display={"flex"} justifyContent={"space-between"} mb={2}>
-            <Box sx={{ width: "49%" }}>
-              <TextField
-                fullWidth
-                type="text"
-                id="outlined-basic"
-                label="Name"
-                variant="outlined"
-                error={Boolean(errors?.name)}
-                helperText={errors?.name?.message}
-                {...register("name")}
-              />
-            </Box>
-            <Box sx={{ width: "49%" }}>
-              <TextField
-                fullWidth
-                id="outlined-basic"
-                label="Email"
-                type="email"
-                variant="outlined"
-                error={Boolean(errors?.email)}
-                helperText={errors?.email?.message}
-                {...register("email")}
-              />
-            </Box>
-          </Box>
-          <Box display={"flex"} justifyContent={"space-between"}>
-            <Box sx={{ width: "49%" }}>
-              <TextField
-                disabled
-                helperText="This field is not editable"
-                fullWidth
-                id="outlined-basic"
-                label="Position"
-                variant="outlined"
-                value={selectedEmployee?.position ?? ""}
-              />
-            </Box>
-            <Box sx={{ width: "49%" }}>
-              <TextField
-                fullWidth
-                id="outlined-basic"
-                label="Phone Number"
-                type="tel"
-                variant="outlined"
-                error={Boolean(errors?.phoneNumber)}
-                helperText={errors?.phoneNumber?.message}
-                {...register("phoneNumber")}
-              />
-            </Box>
-          </Box>
-          <Box mt={1}>
-            <TextField
-              fullWidth
-              id="outlined-basic"
-              label="Profile Image URL"
-              type="tel"
-              variant="outlined"
-              error={Boolean(errors?.profileImageUrl)}
-              helperText={errors?.profileImageUrl?.message}
-              {...register("profileImageUrl")}
-            />
-          </Box>
-          <Box display={"flex"} justifyContent={"flex-end"} mt={4}>
-            <Button variant="contained" size="large" type="submit">
-              save
-            </Button>
-            <Button
-              color="error"
-              sx={{ ml: 1 }}
-              variant="contained"
-              size="large"
-              onClick={handleModalClose}
-            >
-              close
-            </Button>
-          </Box>
-        </Box>
-      </Modal>
+      <Notification
+        handleClose={() => setShowNotification(false)}
+        message={notificationMessage}
+        show={showNotification}
+      />
+      <EmployeeDetailsModal
+        isModalOpen={isModalOpen}
+        selectedEmployee={selectedEmployee}
+        errors={errors}
+        register={register}
+        handleModalClose={handleModalClose}
+        setSelectedEmployee={setSelectedEmployee}
+        handleSubmit={handleSubmit}
+        onSubmit={onSubmit}
+      />
       <Menu
         id="basic-menu"
         anchorEl={anchorEl}
@@ -242,7 +155,7 @@ export const Employee = ({ employee, color }: EmployeeProps) => {
           <ListItemText>Veiw</ListItemText>
         </MenuItem>
       </Menu>
-      <Card sx={{ maxWidth: 300, minWidth: 200 }}>
+      <Card sx={{ maxWidth: 300, minWidth: 200, opacity: !searchValue ? 1 : matchesSearchValue ? 1.0 : .3 }}>
         <Box display={"flex"} flexDirection={"row-reverse"}>
           <Tooltip title="Actions">
             <IconButton
@@ -291,6 +204,7 @@ export const Employee = ({ employee, color }: EmployeeProps) => {
       <Subordinates
         subordinates={employee.subordinates}
         color={subordinatesColor}
+        searchValue={searchValue}
       />
     </Box>
   );
