@@ -1,3 +1,4 @@
+import { Update } from "@mui/icons-material";
 import { createSlice } from "@reduxjs/toolkit";
 
 enum Position {
@@ -234,9 +235,29 @@ const initialState: InitialState = {
 export const employeesSlice = createSlice({
   name: "employees",
   initialState,
-  reducers: {}
+  reducers: {
+    updateEmployee: (state, action) =>  {
+      function update(employee: Employee, id: string) {
+        if (employee.id === id) {
+          const {name, email, phoneNumber, profileImageUrl} = action.payload
+          employee.name = name
+          employee.email = email
+          employee.phoneNumber = phoneNumber
+          employee.profileImageUrl = profileImageUrl
+          console.log({employee})
+        } else {
+         if (employee.subordinates) {
+          for (const subordinate of employee.subordinates) {
+            update(subordinate, id)
+          }
+         }
+        }
+      }
+      update(state.ceo, action.payload.id)
+    }
+  }
 });
 
-export const {} = employeesSlice.actions
+export const {updateEmployee} = employeesSlice.actions
 
 export default employeesSlice.reducer

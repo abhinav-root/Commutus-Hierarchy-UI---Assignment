@@ -15,14 +15,18 @@ import {
   Tooltip,
   Typography,
 } from "@mui/material";
-import { Employee as IEmployee } from "../redux/employees/employeesSlice";
+import { Employee as IEmployee, updateEmployee } from "../redux/employees/employeesSlice";
 import { getRandomColor } from "../utils/common";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Subordinates from "./Subordinates";
 import { ContentCut, Edit } from "@mui/icons-material";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import EditIcon from "@mui/icons-material/Edit";
+import { z } from "zod";
+import { SubmitHandler, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useDispatch } from "react-redux";
 
 type EmployeeProps = {
   employee: IEmployee;
@@ -41,15 +45,53 @@ const style = {
   borderRadius: 2,
 };
 
+const phoneRegex = new RegExp(
+  /^([+]?[\s0-9]+)?(\d{3}|[(]?[0-9]+[)])?([-]?[\s]?[0-9])+$/
+);
+
+const schema = z.object({
+  id: z.string(),
+  name: z.string().min(3).max(20),
+  email: z.string().email(),
+  phoneNumber: z.string().regex(phoneRegex),
+  profileImageUrl: z.string().url(),
+});
+
+type FormFields = z.infer<typeof schema>;
+
 export const Employee = ({ employee, color }: EmployeeProps) => {
   const [subordinatesColor] = useState<string>(getRandomColor());
   const [selectedEmployee, setSelectedEmployee] = useState<null | IEmployee>(
     null
   );
+  const dispatch = useDispatch()
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<FormFields>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      id: selectedEmployee?.id,
+      email: selectedEmployee?.email,
+      name: selectedEmployee?.name,
+      phoneNumber: selectedEmployee?.phoneNumber,
+      profileImageUrl: selectedEmployee?.phoneNumber,
+    },
+  });
+  useEffect(() => {
+    if (selectedEmployee) {
+      reset(selectedEmployee)
+    }
+  }, [selectedEmployee]);
+  const onSubmit: SubmitHandler<FormFields> = (data) => {
+    // console.log(data)
+    dispatch(updateEmployee(data))
+  };
   const [isModalOpen, setIsModalOpen] = useState(false);
-  console.log(selectedEmployee);
+
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [isFormEditable, setIsFormEditable] = useState(false);
   const MenuOpen = Boolean(anchorEl);
   const handleActionsMenuOpen = (
     event: React.MouseEvent<HTMLButtonElement>
@@ -61,7 +103,7 @@ export const Employee = ({ employee, color }: EmployeeProps) => {
   };
   const handleModalOpen = () => setIsModalOpen(true);
   const handleModalClose = () => setIsModalOpen(false);
-  console.log(employee.name);
+
   return (
     <Box
       display={"flex"}
@@ -75,13 +117,12 @@ export const Employee = ({ employee, color }: EmployeeProps) => {
         open={isModalOpen}
         onClose={() => {
           handleModalClose();
-          setIsFormEditable(false);
           setSelectedEmployee(null);
         }}
         aria-labelledby="modal-modal-title"
         aria-describedby="modal-modal-description"
       >
-        <Box sx={style}>
+        <Box sx={style} component={"form"} onSubmit={handleSubmit(onSubmit)} noValidate>
           <Box
             display={"flex"}
             justifyContent={"space-between"}
@@ -96,50 +137,38 @@ export const Employee = ({ employee, color }: EmployeeProps) => {
             >
               Employee Details
             </Typography>
-            <Button
-              variant="outlined"
-              size="large"
-              startIcon={<Edit />}
-              onClick={() => setIsFormEditable(!isFormEditable)}
-            >
+            <Button variant="outlined" size="large" startIcon={<Edit />}>
               Edit
             </Button>
           </Box>
 
-          <Box
-            display={"flex"}
-            justifyContent={"space-between"}
-            component={"form"}
-            mb={2}
-          >
+          <Box display={"flex"} justifyContent={"space-between"} mb={2}>
             <Box sx={{ width: "49%" }}>
               <TextField
-                disabled={!isFormEditable}
                 fullWidth
                 type="text"
                 id="outlined-basic"
                 label="Name"
                 variant="outlined"
-                value={selectedEmployee?.name ?? ""}
+                error={Boolean(errors?.name)}
+                helperText={errors?.name?.message}
+                {...register("name")}
               />
             </Box>
             <Box sx={{ width: "49%" }}>
               <TextField
-                disabled={!isFormEditable}
                 fullWidth
                 id="outlined-basic"
                 label="Email"
                 type="email"
                 variant="outlined"
-                value={selectedEmployee?.email ?? ""}
+                error={Boolean(errors?.email)}
+                helperText={errors?.email?.message}
+                {...register("email")}
               />
             </Box>
           </Box>
-          <Box
-            display={"flex"}
-            justifyContent={"space-between"}
-            component={"form"}
-          >
+          <Box display={"flex"} justifyContent={"space-between"}>
             <Box sx={{ width: "49%" }}>
               <TextField
                 disabled
@@ -153,30 +182,42 @@ export const Employee = ({ employee, color }: EmployeeProps) => {
             </Box>
             <Box sx={{ width: "49%" }}>
               <TextField
-                disabled={!isFormEditable}
                 fullWidth
                 id="outlined-basic"
                 label="Phone Number"
                 type="tel"
                 variant="outlined"
-                value={selectedEmployee?.phoneNumber ?? ""}
+                error={Boolean(errors?.phoneNumber)}
+                helperText={errors?.phoneNumber?.message}
+                {...register("phoneNumber")}
               />
             </Box>
           </Box>
           <Box mt={1}>
-              <TextField
-                disabled={!isFormEditable}
-                fullWidth
-                id="outlined-basic"
-                label="Profile Image URL"
-                type="tel"
-                variant="outlined"
-                value={selectedEmployee?.profileImageUrl ?? ""}
-              />
-            </Box>
-          <Box display={'flex'} justifyContent={'flex-end'} mt={4}>
-          <Button variant="contained" size="large">save</Button>
-          <Button color="error" sx={{ml: 1}} variant="contained" size="large" onClick={handleModalClose}>close</Button>
+            <TextField
+              fullWidth
+              id="outlined-basic"
+              label="Profile Image URL"
+              type="tel"
+              variant="outlined"
+              error={Boolean(errors?.profileImageUrl)}
+              helperText={errors?.profileImageUrl?.message}
+              {...register("profileImageUrl")}
+            />
+          </Box>
+          <Box display={"flex"} justifyContent={"flex-end"} mt={4}>
+            <Button variant="contained" size="large" type="submit">
+              save
+            </Button>
+            <Button
+              color="error"
+              sx={{ ml: 1 }}
+              variant="contained"
+              size="large"
+              onClick={handleModalClose}
+            >
+              close
+            </Button>
           </Box>
         </Box>
       </Modal>
